@@ -13,24 +13,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - name: Get Date
+      id: get-date
+      run: |
+        echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+    - name: Cache Buildozer global directory
+      uses: actions/cache@v4
       with:
-        python-version: '3.11'
+        path: ~/.buildozer
+        key: buildozer-global-${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        # Asennetaan vain Buildozerin vaatimat peruskääntäjät
-        sudo apt-get install -y libtool automake autoconf gettext python3-pip openjdk-17-jdk unzip
-        pip install --upgrade pip
-        pip install buildozer cython==0.29.33
+    - name: Cache Android SDK/NDK
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer/android/platform/android-sdk
+        key: buildozer-android-sdk-${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
 
-    - name: Build with Buildozer
-      run: |
-        # yes-komento putkitetaan buildozerille, jotta se hyväksyy automaattisesti 
-        # kaikki sen itsensä lataamat Android SDK -lisenssit prosessin aikana.
-        yes | buildozer -v android debug
+    - name: Build with Buildozer Action
+      uses: ArtemSBulgakov/buildozer-action@v1
+      with:
+        command: buildozer android debug
+        buildozer_version: master
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
