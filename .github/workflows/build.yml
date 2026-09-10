@@ -1,0 +1,54 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get Date
+       Keene/get-current-date@v2
+      id: date
+      with:
+        format: YYYYMMDD
+
+    - name: Cache Buildozer global directory
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer
+        key: buildozer-global-${{ runner.os }}-${{ steps.date.outputs.date }}
+
+    - name: Cache Android SDK/NDK
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer/android/platform/android-sdk
+        key: buildozer-android-sdk-${{ runner.os }}-${{ steps.date.outputs.date }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtool automake autoconf gettext
+        pip install --upgrade pip
+        pip install buildozer cython==0.29.33
+
+    - name: Build with Buildozer
+      run: |
+        yes | buildozer -v android debug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: moode-audio-apk
+        path: bin/*.apk
